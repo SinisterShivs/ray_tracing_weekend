@@ -1,47 +1,13 @@
-#include "color.h"
-#include "ray.h"
-#include "vec3.h"
+#include"rtweekend.h"
 
-#include <iostream>
+#include "hittable.h"
+#include "hittable_list.h"
+#include "sphere.h"
 
-/*
-    Given center point, radius, and a ray,
-    determine whether the ray r hits the sphere,
-    returns true if it does.
-*/
-bool hit_sphere(const point3& center, double radius, const ray& r) {
-    /* 
-    * Sphere formula: (C-P) * (C-P) = r^2
-    * Sub in P(t) = Q + td and FOIL into quadratic equation
-        t^2(d * d) - 2t(d * (C-Q)) + (C - Q)*(C - Q) - r^2 = 0
-    * Use quadratic formula to solve for the discriminant
-        t = (-b +- sqrt(b^2 - 4ac)) / 2a
-        a = d*d
-        b = -2d * (C-Q)
-        c = (C-Q)*(C-Q) - r^2
-    * Discriminant
-        if negative, the ray doesnt hit sphere (no t solution)
-        if zero, the ray hits the edge of sphere (1 solution)
-        if positive, the ray goes thru the sphere (2 solutions)
-    */ 
-
-    // C - Q, vector from origin to center of sphere
-    vec3 oc = center - r.origin();
-    // d, ray direction
-    vec3 d = r.direction();
-
-    auto a = dot(d, d);
-    auto b = dot((-2 * d), oc);
-    auto c = dot(oc, oc) - (radius * radius);
-    auto discriminant = (b * b) - (4 * (a * c));
-    
-    return (discriminant >= 0);
-
-}
-
-color ray_color(const ray& r) {
-    if (hit_sphere(point3(0, 0, -1), 0.5, r)) {
-        return color (1, 0, 0);
+color ray_color(const ray& r, const hittable& world) {
+    hit_record rec;
+    if (world.hit(r, 0, infinity, rec)) {
+        return 0.5 * (rec.normal + color(1, 1, 1));
     }
 
     color start_value = color(1.0, 1.0, 1.0);
@@ -63,6 +29,11 @@ int main() {
     // find image height based on width and ratio, ensure at least 1
     int image_height = int(image_width / aspect_ratio);
     image_height = (image_height < 1) ? 1 : image_height;
+
+    // World
+    hittable_list world;
+    world.add(make_shared<sphere>(point3(0, 0, -1), 0.5));
+    world.add(make_shared<sphere>(point3(0, -100.5, -1), 100));
 
     // Camera
     auto focal_length = 1.0;
@@ -104,7 +75,7 @@ int main() {
             // get the ray starting from camera_center and has direction ray_direction
             ray r = ray(camera_center, ray_direction);
             // get color for this ray
-            color pixel_color = ray_color(r);
+            color pixel_color = ray_color(r, world);
             // display color on screen
             write_color(std::cout, pixel_color);
         }
