@@ -3,12 +3,15 @@
 
 #include "rtweekend.h"
 
+class material; // hittable and material needs to know about each other, this avoids circular dependency
+
 class hit_record {
     public:
         point3 p; // point where it hits
         vec3 normal; // surface normal at point
         double t; // value t when it hits
         bool front_face; // the front face
+        shared_ptr<material> mat;
 
         void set_face_normal(const ray& r, const vec3& outward_normal) {
             // sets the normal vector and front_face.

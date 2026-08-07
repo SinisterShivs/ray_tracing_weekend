@@ -6,9 +6,10 @@
 class camera {
     public:
     // Image
-    double aspect_ratio = 1.0; // width/height
-    int image_width = 400;     // rendered image in pixel count
-    int samples_per_pixel = 10; // count of random samples per pixel
+    double aspect_ratio = 1.0;      // width/height
+    int image_width = 400;          // rendered image in pixel count
+    int samples_per_pixel = 10;     // count of random samples per pixel
+    int max_depth = 10;             // max number of ray bounces before ending
     
     void render(const hittable& world) {
         initialize();
@@ -23,9 +24,9 @@ class camera {
                 color pixel_color(0, 0, 0);
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
                     // a random ray within 0.5 of that pixel
-                    ray r = get_ray(i, j);
+                    ray r = get_ray(j, i);
                     // add to buffer
-                    pixel_color += ray_color(r, world);
+                    pixel_color += ray_color(r, max_depth,world);
                 }
                 
                 // Averaging all the colors that the rays return (anti-aliasing)
@@ -102,12 +103,27 @@ class camera {
             return vec3(random_double() -0.5, random_double() -0.5, 0);
         }
 
-        color ray_color(const ray& r, const hittable& world) {
+        /*
+            * given ray r and the world, determine if the ray hits any objects.
+            * If hits, calculate the bounced ray and recurse until <depth> is reached.
+        */
+        color ray_color(const ray& r, int depth, const hittable& world) {
+            // if depth limit reached, no more light is gathered
+            if (depth <= 0) {
+                return color(0, 0, 0); // black
+            }
+
             hit_record rec;
-            if (world.hit(r, interval(0, infinity), rec)) {
-                return 0.5 * (rec.normal + color(1, 1, 1));
+
+            // 0.001 to avoid shadow acne
+            if (world.hit(r, interval(0.001, infinity), rec)) {
+                vec3 direction = random_on_hemisphere(rec.normal);
+                // recursive, shoots another ray from rec.p (the contact point with the hittable)
+                // the bounced ray is is 0.5 times weaker.
+                return 0.5 * ray_color(ray(rec.p, direction), depth-1, world);
             }   
 
+            /* sky gradient */
             color start_value = color(1.0, 1.0, 1.0);
             color end_value = color(0.5, 0.7, 1.0);
             // normalize vector so that we can linear interpolate
